@@ -1,7 +1,8 @@
 <template>
   <div id="chatContainer" class="expanded">
     <div class="chatHeader">
-      <h4 class="botName"><img src="https://applied.dit.hua.gr/wp-content/uploads/2022/05/HUA_Logo_Blue.png" class="harokopioImage"></h4>
+      <h4 class="botName"><a href="https://www.hua.gr/"><img src="https://applied.dit.hua.gr/wp-content/uploads/2022/05/HUA_Logo_Blue.png" class="harokopioImage"></a></h4>
+      <h4 class="botName"><a href="https://dit.hua.gr/index.php/el/"><img src="../dit-logo.png" class="ditImage"></a></h4>
     </div>
     <div class="chatBody">
       <div class="messages" v-for="message in messages" :key="message.id">
@@ -137,17 +138,29 @@ function formatMessage(text) {
     }
 
     function animateTyping(messageId, fullText) {
-      let index = 0;
-      const interval = setInterval(() => {
-        if (index <= fullText.length) {
-          messages.value[messageId].message = fullText.substring(0, index);
-          index++;
-        } else {
-          clearInterval(interval);
-          messages.value[messageId].generated = true;
-        }
-      }, 20); 
+    if (!messages.value[messageId]) {
+        console.error(`animateTyping: Message with ID ${messageId} not found.`);
+        return;
     }
+
+    if (typeof fullText !== "string") {
+        console.error("animateTyping: fullText is not a valid string.");
+        messages.value[messageId].message = "There was an error, please try again.";
+        messages.value[messageId].generated = true;
+        return;
+    }
+
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index <= fullText.length) {
+            messages.value[messageId].message = fullText.substring(0, index);
+            index++;
+        } else {
+            clearInterval(interval);
+            messages.value[messageId].generated = true;
+        }
+    }, 20);
+}
 
 
     function giveFeedback(messageId, feedbackType) {
@@ -223,7 +236,8 @@ body {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   color: black;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 10px;
   align-items: center;
 }
 .chatFooter {
@@ -286,9 +300,18 @@ input:not(#createMessage):hover {
   margin: 10px;
 }
 
-.harokopioImage{
-  width: 25%;
-  height: 25%;
+.botName {
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.harokopioImage {
+  height: 100px; /* Adjust size as needed */
+}
+
+.ditImage {
+  height: 80px; /* Adjust size as needed */
 }
 
 
