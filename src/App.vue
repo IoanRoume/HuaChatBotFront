@@ -89,6 +89,15 @@ function extractFeedback() {
         }));
 }
 
+function scrollToBottom() {
+    const chatBody = document.querySelector(".chatBody");
+    if (chatBody) {
+        setTimeout(() => {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }, 50); 
+    }
+}
+
 function formatMessage(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")  
@@ -110,14 +119,14 @@ function formatMessage(text) {
 
       isWaiting.value = true; 
       createMessage(messageContent.value, "user"); 
-
+      scrollToBottom();
 
       const botMessageId = createMessage("...", "bot");
 
       
 
       try {
-        const { data } = await axios.post("http://localhost:9090/chat", { message: messageContent.value });
+        const { data } = await axios.post("http://localhost:9090/chat", { message: messageContent.value, history:getLastPairs() });
 
         
         animateTyping(botMessageId, data.message);
@@ -128,9 +137,19 @@ function formatMessage(text) {
 
       messageContent.value = ""; 
       isWaiting.value = false; 
+
     }
 
-   
+    function getLastPairs() {
+    let lastMessages = messages.value.slice(-6); // Get last 6 messages (3 Q&A pairs)
+
+    return lastMessages
+        .filter(msg => !(msg.sender === "bot" && msg.message === "...")) // Exclude unfinished bot responses
+        .map(msg => ({
+            role: msg.sender === "user" ? "user" : "bot",
+            content: msg.message
+        }));
+}
     function createMessage(text, sender) {
       let id = messages.value.length;
       messages.value.push({ id, message: text, sender , generated: false});
@@ -159,6 +178,7 @@ function formatMessage(text) {
             clearInterval(interval);
             messages.value[messageId].generated = true;
         }
+        scrollToBottom();
     }, 20);
 }
 
