@@ -141,15 +141,22 @@ function formatMessage(text) {
     }
 
     function getLastPairs() {
-    let lastMessages = messages.value.slice(-6); // Get last 6 messages (3 Q&A pairs)
+    let lastMessages = messages.value.slice(-6); 
 
-    return lastMessages
-        .filter(msg => !(msg.sender === "bot" && msg.message === "...")) // Exclude unfinished bot responses
-        .map(msg => ({
-            role: msg.sender === "user" ? "user" : "bot",
-            content: msg.message
-        }));
+    let filteredMessages = lastMessages.filter(msg => !(msg.sender === "bot" && msg.message === "..."));
+
+    if (messages.value.length <= 2 && messages.value[0].sender === "user") {
+        return [];
+    }
+
+    filteredMessages.pop();
+
+    return filteredMessages.map(msg => ({
+        role: msg.sender === "user" ? "user" : "bot",
+        content: msg.message
+    }));
 }
+
     function createMessage(text, sender) {
       let id = messages.value.length;
       messages.value.push({ id, message: text, sender , generated: false});
