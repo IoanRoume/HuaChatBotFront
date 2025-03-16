@@ -5,6 +5,13 @@
       <h4 class="botName"><a href="https://dit.hua.gr/index.php/el/"><img src="../dit-logo.png" class="ditImage"></a></h4>
     </div>
     <div class="chatBody">
+      <div class="messageRow bot">
+    <div class="message bot">
+      <p>🤖 Καλώς ήρθατε!  </p>
+      <p> Είμαι εδώ για να σας βοηθήσω με οποιαδήποτε απορία έχετε σχετικά με το <b>Χαροκόπειο Πανεπιστήμιο</b>  και το <b>Τμήμα Πληροφορικής & Τηλεματικής</b>. Ρωτήστε με για πληροφορίες σχετικά με προγράμματα σπουδών, μαθήματα, διαδικασίες εγγραφής και πολλά άλλα. Πώς μπορώ να σας βοηθήσω σήμερα;
+      </p>
+    </div>
+  </div>
       <div class="messages" v-for="message in messages" :key="message.id">
         <div class="messageRow" :class="{ user: message.sender === 'user', bot: message.sender === 'bot' }">
           <div class="message" :class="message.sender">
@@ -102,7 +109,9 @@ function formatMessage(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")  
     .replace(/__(.*?)__/g, "<b>$1</b>")      
-    .replace(/\n/g, "<br>");             
+    .replace(/\n/g, "<br>")
+    .replace("\\[at\\]","@")
+    .replace("\\[dot\\]",".");             
 }
 
     onMounted(() => {
@@ -177,6 +186,8 @@ function formatMessage(text) {
     }
 
     let index = 0;
+    const emoji = "🤖 ";  
+    fullText = emoji + fullText;
     const interval = setInterval(() => {
         if (index <= fullText.length) {
             messages.value[messageId].message = fullText.substring(0, index);
