@@ -110,8 +110,12 @@ function formatMessage(text) {
     .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")  
     .replace(/__(.*?)__/g, "<b>$1</b>")      
     .replace(/\n/g, "<br>")
-    .replace("\\[at\\]","@")
-    .replace("\\[dot\\]",".");             
+    .replace(/\[at\]/gi, "@")        
+    .replace(/\[dot\]/gi, ".")   
+    .replace(/\\\[at\\\]/gi, "@")  
+    .replace(/\\\[dot\\\]/gi, ".")
+    .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '<a href="mailto:$1">$1</a>')
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank">$1</a>'); 
 }
 
     onMounted(() => {
@@ -184,7 +188,7 @@ function formatMessage(text) {
         messages.value[messageId].generated = true;
         return;
     }
-
+    fullText = fullText.replace("🤖","")
     let index = 0;
     const emoji = "🤖 ";  
     fullText = emoji + fullText;
