@@ -1,4 +1,22 @@
 <template>
+
+<div v-if="showWelcome" class="welcome-overlay">
+  <div class="welcome-box">
+    <img src="https://media.tenor.com/_CnW8qoaw1AAAAAi/happy-hello.gif" alt="Welcome" />
+    
+    <div class="welcome-text-box">
+      <h3>Καλώς ήρθατε!</h3> 
+      Είμαι εδώ για να σας βοηθήσω με οποιαδήποτε απορία έχετε σχετικά με το 
+      <b>Χαροκόπειο Πανεπιστήμιο</b> για το <b>προπτυχιακό πρόγραμμα σπουδών του Τμήματος Πληροφορικής & Τηλεματικής</b>. 
+      Ρωτήστε με για πληροφορίες σχετικά με προγράμματα σπουδών, μαθήματα, διαδικασίες εγγραφής και πολλά άλλα. 
+      Σε περίπτωση καθυστέρησης στην απάντηση, παρακαλώ σημειώστε ότι μπορεί να οφείλεται σε αυξημένη κίνηση.
+      <br /><br />
+    </div>
+    <button @click="startChat">Ξεκίνα την συνομιλία</button>
+  </div>
+</div>
+
+
   <div id="chatContainer" class="expanded">
     <div class="chatHeader">
       <h4 class="botName"><a href="https://www.hua.gr/"><img src="https://applied.dit.hua.gr/wp-content/uploads/2022/05/HUA_Logo_Blue.png" class="harokopioImage"></a></h4>
@@ -7,15 +25,16 @@
     <div class="chatBody">
       <div class="messageRow bot">
     <div class="message bot">
-      <p>🤖 Καλώς ήρθατε!  </p>
-      <p> Είμαι εδώ για να σας βοηθήσω με οποιαδήποτε απορία έχετε σχετικά με το <b>Χαροκόπειο Πανεπιστήμιο</b>  και το <b>Τμήμα Πληροφορικής & Τηλεματικής</b>. Ρωτήστε με για πληροφορίες σχετικά με προγράμματα σπουδών, μαθήματα, διαδικασίες εγγραφής και πολλά άλλα. Πώς μπορώ να σας βοηθήσω σήμερα;
-      </p>
+      <p>🤖 Πώς μπορώ να σας βοηθήσω σήμερα;</p>
     </div>
   </div>
       <div class="messages" v-for="message in messages" :key="message.id">
         <div class="messageRow" :class="{ user: message.sender === 'user', bot: message.sender === 'bot' }">
           <div class="message" :class="message.sender">
-            <p v-html="formatMessage(message.message)"></p>
+            <div v-if="message.message === 'loading-indicator'" class="thinkingGif">
+              <img src="https://media.tenor.com/KjlP2exHPCgAAAAi/cute-robot.gif" alt="Bot is thinking..." class="thinkingImage"> <!-- Bot is thinking -->
+            </div>
+            <p v-else v-html="formatMessage(message.message)"></p>
 
           </div>
         </div>
@@ -70,10 +89,17 @@ export default {
     const messages = ref([]),
           messageContent = ref(""),
           isWaiting = ref(false);
+    const session_id = ref(generateSessionId());
+    const showWelcome = ref(true);
+    function generateSessionId() {
+      const id = Math.random().toString(36).substr(2, 16);
+      return id;
+    }
 
-    
+    function startChat() {
+  showWelcome.value = false;
+}
 
-    
 
     async function handleSessionEnd() {
     const url = `http://localhost:9090/sessionEnd?feedback=${encodeURIComponent(JSON.stringify(extractFeedback()))}`;
@@ -127,31 +153,47 @@ function formatMessage(text) {
     });
 
 
-    async function sendMessage() {
-      if (messageContent.value === "" || isWaiting.value) return;
+  async function sendMessage() {
+    if (messageContent.value === "" || isWaiting.value) return;
 
-      isWaiting.value = true; 
-      createMessage(messageContent.value, "user"); 
-      scrollToBottom();
+    isWaiting.value = true;
+    createMessage(messageContent.value, "user");
+    scrollToBottom();
 
-      const botMessageId = createMessage("...", "bot");
+    const botMessageId = createMessage("loading-indicator", "bot");
 
-      
 
-      try {
-        const { data } = await axios.post("http://localhost:9090/chat", { message: messageContent.value, history:getLastPairs() });
+    try {
+      let continuePolling = true;
+      let previousMessage = "";
 
-        
-        animateTyping(botMessageId, data.message);
-      } catch (error) {
-        console.error("Error sending message:", error);
-        animateTyping(botMessageId, "Error: Could not reach the server");
+      while (continuePolling) {
+        const { data } = await axios.post("http://localhost:9090/chat", {
+          message: messageContent.value,
+          history: getLastPairs(),
+          session_id: session_id.value
+        });
+
+        if (data.message.includes("Παρακαλώ περιμένετε")) {
+          if (previousMessage != data.message) {
+            animateTyping(botMessageId, data.message); // Show initial wait message
+            previousMessage = data.message;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before polling again
+        } else {
+          animateTyping(botMessageId, data.message);
+          continuePolling = false;
+        }
       }
-
-      messageContent.value = ""; 
-      isWaiting.value = false; 
-
+    } catch (error) {
+      console.error("Error sending message:", error);
+      animateTyping(botMessageId, "Error: Could not reach the server.");
     }
+
+    messageContent.value = "";
+    isWaiting.value = false;
+}
+
 
     function getLastPairs() {
     let lastMessages = messages.value.slice(-6); 
@@ -192,16 +234,29 @@ function formatMessage(text) {
     let index = 0;
     const emoji = "🤖 ";  
     fullText = emoji + fullText;
-    const interval = setInterval(() => {
+    if (fullText.includes("Παρακαλώ περιμένετε")) {
+      const interval = setInterval(() => {
         if (index <= fullText.length) {
             messages.value[messageId].message = fullText.substring(0, index);
             index++;
         } else {
             clearInterval(interval);
-            messages.value[messageId].generated = true;
+            messages.value[messageId].generated = false;
         }
         scrollToBottom();
-    }, 20);
+    }, 0);
+    } else {
+        const interval = setInterval(() => {
+            if (index <= fullText.length) {
+                messages.value[messageId].message = fullText.substring(0, index);
+                index++;
+            } else {
+                clearInterval(interval);
+                messages.value[messageId].generated = true;
+            }
+            scrollToBottom();
+        }, 20);
+    }
 }
 
 
@@ -237,7 +292,7 @@ function formatMessage(text) {
     }
 
 
-    return { messages, messageContent, sendMessage, isWaiting , giveFeedback, submitComment, formatMessage};
+    return { messages, messageContent, sendMessage, isWaiting , giveFeedback, submitComment, formatMessage, startChat, showWelcome};
   },
 };
 </script>
@@ -509,5 +564,85 @@ input:not(#createMessage):hover {
   white-space: pre-wrap; 
   max-width: 50%; 
 }
+
+.thinkingGif {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 10px;
+}
+
+.thinkingImage {
+  width: 100px;
+  height: auto;
+}
+
+
+.welcome-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.welcome-box {
+  background: white;
+  padding: 30px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  text-align: center;
+  max-width: 600px;
+  width: 90%;
+
+  max-height: 90vh;       
+  overflow-y: auto;       
+}
+
+.welcome-box img {
+  max-width: 300px;
+  margin-bottom: 0px;
+}
+
+.welcome-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.welcome-text-box {
+  margin-top: 0px;
+  padding-top: 0px;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 25px 15px rgba(0, 0, 0, 0.1);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  text-align: center;
+  margin-bottom: 20px;
+
+  max-height: 250px;      
+  overflow-y: auto;
+}
+
+.welcome-box button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background-color: #005bbb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
 
 </style>
