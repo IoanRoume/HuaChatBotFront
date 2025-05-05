@@ -6,13 +6,20 @@
     
     <div class="welcome-text-box">
       <h3>Καλώς ήρθατε!</h3> 
-      Είμαι εδώ για να σας βοηθήσω με οποιαδήποτε απορία έχετε σχετικά με το 
-      <b>Χαροκόπειο Πανεπιστήμιο</b> για το <b>προπτυχιακό πρόγραμμα σπουδών του Τμήματος Πληροφορικής & Τηλεματικής</b>. 
-      Ρωτήστε με για πληροφορίες σχετικά με προγράμματα σπουδών, μαθήματα, διαδικασίες εγγραφής και πολλά άλλα. 
-      Σε περίπτωση καθυστέρησης στην απάντηση, παρακαλώ σημειώστε ότι μπορεί να οφείλεται σε αυξημένη κίνηση.
-      <br /><br />
+      Είμαι εδώ για να σας βοηθήσω με κάθε απορία που έχετε σχετικά με το 
+    <strong>Χαροκόπειο Πανεπιστήμιο</strong> και πιο συγκεκριμένα με το 
+    <strong>Προπτυχιακό Πρόγραμμα Σπουδών του Τμήματος Πληροφορικής & Τηλεματικής</strong>.
+      <p></p>Μη διστάσετε να με ρωτήσετε για προγράμματα σπουδών, μαθήματα, διαδικασίες εγγραφής ή οποιοδήποτε σχετικό θέμα σας ενδιαφέρει.
+      <p class="note">
+        ⏳ Σε περίπτωση καθυστέρησης στην απάντηση, ενδέχεται να οφείλεται σε αυξημένη επισκεψιμότητα — ευχαριστώ για την υπομονή σας!
+      </p>
+      
     </div>
     <button @click="startChat">Ξεκίνα την συνομιλία</button>
+    <div class="do-not-show-again">
+      <input type="checkbox" id="noShowWelcome" v-model="doNotShowWelcome">
+      <label for="noShowWelcome">Να μην εμφανιστεί αυτό το μήνυμα ξανά</label>
+    </div>
   </div>
 </div>
 
@@ -25,7 +32,13 @@
     <div class="chatBody">
       <div class="messageRow bot">
     <div class="message bot">
-      <p>🤖 Πώς μπορώ να σας βοηθήσω σήμερα;</p>
+      <p>🤖 Χρειάζεστε βοήθεια; Δοκιμάστε να ρωτήσετε για:</p>
+      <div class="suggested-questions">
+        <div v-for="(question, index) in suggestedQuestions" :key="index" 
+            class="suggested-question" @click="selectQuestion(question)">
+          {{ question }}
+        </div>
+      </div>
     </div>
   </div>
       <div class="messages" v-for="message in messages" :key="message.id">
@@ -91,14 +104,46 @@ export default {
           isWaiting = ref(false);
     const session_id = ref(generateSessionId());
     const showWelcome = ref(true);
+    const doNotShowWelcome = ref(false); // New ref to control the checkbox state
+
+    const allQuestions = ref([
+      "Ποια μαθήματα προσφέρονται στο πρώτο εξάμηνο;",
+      "Πώς μπορώ να επικοινωνήσω με τη γραμματεία;",
+      "Πως γίνεται να κάνω εγγραφή στο εξάμηνο;",
+      "Τι ώρα και ποια μέρα διεξάγεται το μάθημα της Τεχνητής Νοημοσύνης;",
+      "Τι πρέπει να έχω για να πάρω πτυχίο;",
+      "Πότε τελειώνει το Εαρινό εξάμηνο;",
+      "Τι μαθήματα πρέπει να παρακολουθήσω για να γίνω μηχανικός Τεχνιτής Νοημοσύνης;",
+      "Πότε ξεκινάει η εξεταστική του Εαρινού εξαμήνου;",
+      "Δώσε μου πληροφορίες για την Πρακτική Άσκηση.",
+      "Ποιο είναι το email και τηλέφωνο της γραμματείας;",
+      "Ποια είναι η διαδικασία για την πτυχιακή εργασία;",
+      "Που βρίσκεται το τμήμα;",
+      "Ποια είναι τα μαθήματα του 5ου εξαμήνου;"
+    ]);
+    const suggestedQuestions = ref(getRandomQuestions());
+
+    function getRandomQuestions() {
+      const shuffled = [...allQuestions.value].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 3);
+    }
+
+    function selectQuestion(question) {
+      messageContent.value = question;
+      sendMessage();
+    }
+
     function generateSessionId() {
       const id = Math.random().toString(36).substr(2, 16);
       return id;
     }
 
     function startChat() {
-  showWelcome.value = false;
-}
+      if (doNotShowWelcome.value) {
+        localStorage.setItem("hideWelcome", "true");
+      }
+      showWelcome.value = false;
+    }
 
 
     async function handleSessionEnd() {
@@ -146,6 +191,10 @@ function formatMessage(text) {
 
     onMounted(() => {
       window.addEventListener("beforeunload", handleSessionEnd);
+      const hideWelcome = localStorage.getItem("hideWelcome");
+      if (hideWelcome === "true") {
+        showWelcome.value = false;
+      }
     });
 
     onUnmounted(() => {
@@ -214,7 +263,12 @@ function formatMessage(text) {
 
     function createMessage(text, sender) {
       let id = messages.value.length;
-      messages.value.push({ id, message: text, sender , generated: false});
+      messages.value.push({ 
+        id, 
+        message: text, 
+        sender, 
+        generated: false
+      });
       return id; 
     }
 
@@ -230,33 +284,31 @@ function formatMessage(text) {
         messages.value[messageId].generated = true;
         return;
     }
-    fullText = fullText.replace("🤖","")
-    let index = 0;
-    const emoji = "🤖 ";  
+
+    fullText = fullText.replace("🤖", "");
+    const emoji = "🤖 ";
     fullText = emoji + fullText;
-    if (fullText.includes("Παρακαλώ περιμένετε")) {
-      const interval = setInterval(() => {
+
+    const delayPerChar = fullText.includes("Παρακαλώ περιμένετε") ? 0 : 20; // ms per character
+
+    let startTime = performance.now();
+
+    function updateFrame(now) {
+        const elapsed = now - startTime;
+        const index = Math.floor(elapsed / delayPerChar);
+
         if (index <= fullText.length) {
             messages.value[messageId].message = fullText.substring(0, index);
-            index++;
-        } else {
-            clearInterval(interval);
-            messages.value[messageId].generated = false;
-        }
-        scrollToBottom();
-    }, 0);
-    } else {
-        const interval = setInterval(() => {
-            if (index <= fullText.length) {
-                messages.value[messageId].message = fullText.substring(0, index);
-                index++;
-            } else {
-                clearInterval(interval);
-                messages.value[messageId].generated = true;
-            }
             scrollToBottom();
-        }, 20);
+            requestAnimationFrame(updateFrame);
+        } else {
+            messages.value[messageId].message = fullText;
+            messages.value[messageId].generated = fullText.includes("Παρακαλώ περιμένετε") || fullText.includes("Error: Could not reach the server.") ? false : true;
+            scrollToBottom();
+        }
     }
+
+    requestAnimationFrame(updateFrame);
 }
 
 
@@ -292,7 +344,7 @@ function formatMessage(text) {
     }
 
 
-    return { messages, messageContent, sendMessage, isWaiting , giveFeedback, submitComment, formatMessage, startChat, showWelcome};
+    return { messages, messageContent, sendMessage, isWaiting , giveFeedback, submitComment, formatMessage, startChat, showWelcome, suggestedQuestions, getRandomQuestions, selectQuestion, doNotShowWelcome};
   },
 };
 </script>
@@ -630,7 +682,7 @@ input:not(#createMessage):hover {
   text-align: center;
   margin-bottom: 20px;
 
-  max-height: 250px;      
+  max-height: 300px;      
   overflow-y: auto;
 }
 
@@ -642,6 +694,43 @@ input:not(#createMessage):hover {
   border: none;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.note {
+  font-size: 0.95em;
+  color: #777;
+  margin-top: 1em;
+  font-style: italic;
+}
+
+.do-not-show-again {
+  font-size: 0.8rem;
+  color: grey;
+  align-items: center;
+  gap: 5px;
+}
+
+.suggested-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.suggested-question {
+  background-color: #e8f4fc;
+  border: 1px solid #cce5ff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #0066cc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggested-question:hover {
+  background-color: #d0e8ff;
+  transform: translateY(-2px);
 }
 
 
