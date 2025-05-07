@@ -308,7 +308,7 @@
   
           if (index <= fullText.length) {
               messages.value[messageId].message = fullText.substring(0, index);
-
+              scrollToBottom();
               requestAnimationFrame(updateFrame);
           } else {
               messages.value[messageId].message = fullText;
